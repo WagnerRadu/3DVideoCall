@@ -11,21 +11,34 @@ const httpServer = createServer(app);
 httpServer.listen(port);
 console.log("Server is running on http://localhost:" + port);
 
-const io = new Server(httpServer, { 
+const io = new Server(httpServer, {
     cors: {
         origin: ["http://localhost:5173"]
-      }
- });
+    }
+});
 
-let peerList = {}
+let usersMap = {}
 
 io.on("connection", (socket) => {
     console.log(
-        "User connected with ID:", 
+        "User connected with ID:",
         socket.id + ". There are",
         io.engine.clientsCount,
         "users connected");
-    
-    peerList[socket.id]
-  });
-  
+
+    usersMap[socket.id] = {};
+
+    socket.emit("introduction", Object.keys(usersMap));
+
+    io.emit("newUserConnected", socket.id);
+
+
+    socket.on("signal", (to, from, data) => {
+        if(to in usersMap) {
+            io.to(to).emit("signal", to, from, data);
+        } else {
+            console.log("Peer with id", to, " was not found!");
+        }
+    });
+});
+
