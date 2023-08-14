@@ -7,59 +7,90 @@ import * as process from "process";
 
 global.process = process;
 
-const socket = io("http://localhost:8080");
+let socket;
+
+let scene;
 
 let usersMap = {};
 
-socket.on("connect", () => {
-    console.log("My socket id:", socket.id);
-});
+let clientStream;
 
-socket.on("introduction", (userIdsList) => {
-    userIdsList.forEach(otherId => {
-        if (otherId != socket.id) {
-            console.log("Adding user with id:", otherId);
-            usersMap[otherId] = {};
+let constraints = {
+    audio: true,
+    video: false
+}
 
-            let pc = createPeerConnection(otherId, true);
-            usersMap[otherId].peerConnection = pc;
+run();
+
+async function run() {
+
+    clientStream = await navigator.mediaDevices.getUserMedia(constraints);
+    init();
+    scene = new Scene();
+}
+
+function init() {
+    socket = io("http://localhost:8080");
+    socket.on("connect", () => {
+        console.log("My socket id:", socket.id);
+    });
+
+    socket.on("introduction", (userIdsList) => {
+        userIdsList.forEach(theirSocketId => {
+            if (theirSocketId != socket.id) {
+                console.log("Adding user with id:", theirSocketId);
+                usersMap[theirSocketId] = {};
+
+                let pc = createPeerConnection(theirSocketId, true);
+                usersMap[theirSocketId].peerConnection = pc;
+
+                createAudioElement(theirSocketId);
+            }
+        });
+    });
+
+    socket.on("signal", (to, from, data) => {
+        if (to != socket.id) {
+            console.log("Socket IDs do not match!");
+        }
+
+        let peer = usersMap[from];
+        if (peer.peerConnection) {
+            peer.peerConnection.signal(data);
+        } else {
+            console.log("Never found right simplepeer object");
+
+            let peerConnection = createPeerConnection(from, false);
+
+            usersMap[from].peerConnection = peerConnection;
+
+            peerConnection.signal(data);
         }
     });
-});
 
-socket.on("signal", (to, from, data) => {
-    if (to != socket.id) {
-        console.log("Socket IDs do not match!");
-    }
-
-    let peer = usersMap[from];
-    if (peer.peerConnection) {
-        peer.peerConnection.signal(data);
-    } else {
-        console.log("Never found right simplepeer object");
-
-        let peerConnection = createPeerConnection(from, false);
-
-        usersMap[from].peerConnection = peerConnection;
-
-        peerConnection.signal(data);
-    }
-});
-
-socket.on("newUserConnected", (theirSocketId) => {
-    if (theirSocketId != socket.id && !(theirSocketId in usersMap)) {
-        console.log("A new user connected with id:", theirSocketId);
-        usersMap[theirSocketId] = {};
-    }
+    socket.on("newUserConnected", (theirSocketId) => {
+        if (theirSocketId != socket.id && !(theirSocketId in usersMap)) {
+            console.log("A new user connected with id:", theirSocketId);
+            usersMap[theirSocketId] = {};
+            createAudioElement(theirSocketId);
+        }
+    });
 
 
-});
+    socket.on("userDisconnected", (disconnectedSocketId) => {
+        console.log("User with ID:", disconnectedSocketId, "has disconnected");
+
+        let audioEl = document.getElementById(theirSocketId + "_audio");
+        audioEl.remove();
+        delete usersMap[disconnectedSocketId];
+    });
+}
 
 function createPeerConnection(theirSocketId, isInitiator = false) {
     console.log('Connecting to peer with ID', theirSocketId);
     console.log('initiating?', isInitiator);
 
-    let peerConnection = new SimplePeer({ initiator: isInitiator })
+    let peerConnection = new SimplePeer({ initiator: isInitiator, trickle: true })
 
     peerConnection.on("signal", (data) => {
         socket.emit("signal", theirSocketId, socket.id, data);
@@ -68,15 +99,35 @@ function createPeerConnection(theirSocketId, isInitiator = false) {
     peerConnection.on("connect", () => {
         console.log("Ready to send our stream!");
         peerConnection.send("Hi, I am peer number " + socket.id + "!!!!!");
+        peerConnection.addStream(clientStream);
     })
 
     peerConnection.on("data", data => {
         console.log(data.toString());
     });
 
+    peerConnection.on("stream", stream => {
+        console.log("Incoming stream");
+
+        let audioStream = new MediaStream([stream.getAudioTracks()[0]]);
+
+        let audioEl = document.getElementById(theirSocketId + "_audio");
+        audioEl.srcObject = audioStream;
+    })
     return peerConnection;
 }
 
-const scene = new Scene();
+const createAudioElement = (id) => {
+    let audioEl = document.createElement("audio");
+    audioEl.setAttribute("id", id + "_audio");
+    audioEl.controls = true;
+    audioEl.volume = 1;
+    let audioContainer = document.getElementById("audio-container")
+    audioContainer.appendChild(audioEl);
+
+    audioEl.addEventListener("loadeddata", () => {
+        audioEl.play();
+    });
+}
 
 

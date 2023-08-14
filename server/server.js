@@ -40,5 +40,13 @@ io.on("connection", (socket) => {
             console.log("Peer with id", to, " was not found!");
         }
     });
+
+    socket.on("disconnect", (reason) => {
+    
+        console.log("Server side socket with id:", socket.id, "disconnect for the reason:", reason);
+        console.log("There are", io.engine.clientsCount, "users connected");
+        io.emit("userDisconnected", (socket.id));
+        delete usersMap[socket.id];
+    })
 });
 
