@@ -1,0 +1,45 @@
+/* canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+} */
+
+html, body {
+    margin: 0;
+    height: 100%;
+}
+
+.controls-container {
+    position: fixed;
+    /* bottom: 20px; */
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 1em;
+}
+
+.control-icon {
+    background-color: rgb(179, 102, 249, 0.9);
+    padding:20px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    width: 40px;
+}
+
+.control-icon img{
+    /* display: block; */
+    height: 30px;
+    width: 30px;
+}
+
+#leave-btn{
+    background-color: rgb(255, 80, 80, 1);
+}
+
+/* .canvas-container {
+    display: block;
+    height: 70%;
+} */

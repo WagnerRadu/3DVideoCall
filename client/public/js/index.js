@@ -20,7 +20,7 @@ let constraints = {
     video: false
 }
 
-run();
+window.onload = run();
 
 async function run() {
 
@@ -36,6 +36,7 @@ function init() {
     });
 
     socket.on("introduction", (userIdsList) => {
+        scene.addUser(socket.id);
         userIdsList.forEach(theirSocketId => {
             if (theirSocketId != socket.id) {
                 console.log("Adding user with id:", theirSocketId);
@@ -73,6 +74,7 @@ function init() {
             console.log("A new user connected with id:", theirSocketId);
             usersMap[theirSocketId] = {};
             createAudioElement(theirSocketId);
+            scene.addUser(theirSocketId);
         }
     });
 
@@ -80,7 +82,7 @@ function init() {
     socket.on("userDisconnected", (disconnectedSocketId) => {
         console.log("User with ID:", disconnectedSocketId, "has disconnected");
 
-        let audioEl = document.getElementById(theirSocketId + "_audio");
+        let audioEl = document.getElementById(disconnectedSocketId + "_audio");
         audioEl.remove();
         delete usersMap[disconnectedSocketId];
     });
@@ -130,4 +132,19 @@ const createAudioElement = (id) => {
     });
 }
 
+const toggleMic = async () => {
+    let audioTrack = clientStream.getTracks().find(track => track.kind === "audio");
 
+    if(audioTrack.enabled) {
+        audioTrack.enabled = false;
+        console.log("Microphone muted");
+        document.getElementById("mic-btn").style.backgroundColor = "rgb(150,150,150)";
+    } else {
+        audioTrack.enabled = true;
+        console.log("Microphone unmuted");
+        document.getElementById("mic-btn").style.backgroundColor = "rgb(179, 102, 249, 0.9)";
+    }
+}
+
+
+document.getElementById("mic-btn").addEventListener("click", toggleMic);

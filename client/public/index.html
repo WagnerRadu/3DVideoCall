@@ -5,14 +5,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Video Chat</title>
+    <link rel="stylesheet" type="text/css" media="screen" href="index.css">
 </head>
 
 <body>
-    <div id="3d-container">
-        <canvas id="background"></canvas>
+    <div class="canvas-container" id="canvas-container">
+        <!-- <canvas id="background"></canvas> -->
     </div>
     <div id="audio-container"></div>
-    <script type="module" src="./js/index.js"></script>
-</body>
 
+    <div id="controls" class="controls-container">
+        <div class="control-icon" id="mic-btn">
+            <img src="assets/microphone.png" alt="" />
+        </div>
+        <div class="control-icon" id="leave-btn">
+            <img src="assets/phone.png" alt="" />
+        </div>
+    </div>
+    
+
+</body>
+<script type="module" src="./js/index.js"></script>
 </html>
