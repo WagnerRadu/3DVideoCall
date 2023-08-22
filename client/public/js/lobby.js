@@ -44,6 +44,6 @@ joinBtn.addEventListener("click", () => {
 
 captureBtn.addEventListener("click", () => {
     ev.preventDefault();
-    takepi
+ 
 
 })

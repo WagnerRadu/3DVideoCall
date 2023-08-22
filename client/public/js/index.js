@@ -2,8 +2,10 @@ import { Scene } from "./scene.js";
 import { io } from "socket.io-client";
 import SimplePeer from "simple-peer";
 
+import { processFace } from "./face-processor.js";
 import global from 'global'
 import * as process from "process";
+// import * as tf from '@tensorflow/tfjs';
 
 global.process = process;
 
@@ -23,6 +25,15 @@ let constraints = {
 window.onload = run();
 
 async function run() {
+    // await processFace();
+
+    // const profileInfo = await tf.profile(async () => {
+    //     // You must profile all uses of tf symbols.
+    //     await processFace();
+    //   });
+      
+    //   const kernelNames = profileInfo.kernelNames
+    //   console.log(kernelNames);
 
     clientStream = await navigator.mediaDevices.getUserMedia(constraints);
     init();
