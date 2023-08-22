@@ -1,8 +1,11 @@
 import "../index.css"
 import * as THREE from "three";
+import {GLTFLoader} from "../../node_modules/three/examples/jsm/loaders/GLTFLoader.js"
 
 class Scene {
     constructor() {
+        this.gltfLoader = new GLTFLoader(); 
+
         this.usersMap = {};
 
         this.width = parent.innerWidth;
@@ -29,7 +32,7 @@ class Scene {
         let canvasContainer = document.getElementById("canvas-container");
         canvasContainer.append(this.renderer.domElement);
 
-        this.ambientLight = new THREE.AmbientLight(0x404040, 10);
+        this.ambientLight = new THREE.AmbientLight(0x404040, 50);
         this.scene.add(this.ambientLight);
 
         window.addEventListener("resize", () => {
@@ -59,15 +62,35 @@ class Scene {
     }
 
     addUser = (id) => {
+
+        this.gltfLoader.load("../assets/human_male.gltf", (gltfScene) => {
+            console.log(gltfScene);
+            // console.log(gltfScene.materials.getMaterialByName);
+
+            gltfScene.scene.traverse( function ( child ) {
+
+                if ( child.material && child.material.name === "Skin" ) {
+            
+                    // child.material = new THREE.MeshBasicMaterial( { wireframe: true } );
+                    child.material.map()
+            
+                }
+            } );
+
+            gltfScene.scene.scale.set(4, 4, 4);
+            // gltfScene.scene.rotation.y = 2;
+            // gltfScene.scene.position.y = -60;
+            this.scene.add(gltfScene.scene);
+        });
         
-        let geometry = new THREE.ConeGeometry( 5, 10, 8, 1);
-        let material = new THREE.MeshStandardMaterial({ color: 0xFF6347, wireframe: false });
-        let userHead = new THREE.Mesh(geometry, material);
-        userHead.position.set(this.nextUserPos, 0, 0);
-        this.usersMap[id] = {};
-        this.usersMap[id].userHead = userHead;
-        this.scene.add(userHead);
-        this.nextUserPos += 10;
+        // let geometry = new THREE.ConeGeometry( 5, 10, 8, 1);
+        // let material = new THREE.MeshStandardMaterial({ color: 0xFF6347, wireframe: false });
+        // let userHead = new THREE.Mesh(geometry, material);
+        // userHead.position.set(this.nextUserPos, 0, 0);
+        // this.usersMap[id] = {};
+        // this.usersMap[id].userHead = userHead;
+        // this.scene.add(userHead);
+        // this.nextUserPos += 10;
 
         // let userPosition = new THREE.Vector3(this.nextUserPos, 0, 0);
 
