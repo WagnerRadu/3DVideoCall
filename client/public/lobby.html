@@ -10,13 +10,17 @@
 
 <body>
     <div class="webcam-container">
-        <video id="video">Video stream not available.</video>
+        <video autoplay="true" id="video" style="display: none"></video></video>
+        <canvas id="videoCanvas"></canvas>
         <button id="capture-btn">Take photo</button>
     </div>
-    <canvas id="canvas"> </canvas>
+    <canvas id="result-canvas"></canvas>
+    <button type="button" id="generate-btn">Generate Texture</button>
+    <canvas id="texture-canvas"></canvas>
     <button type="button" id="join-btn">Join Call</button>
 </body>
 
-<script src="./js/lobby.js"></script>
+<script src="./js/opencv.js"></script>
+<script type="module" src="./js/lobby.js"></script>
 
 </html>

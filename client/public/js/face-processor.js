@@ -4,12 +4,16 @@ import "../../node_modules/jimp/browser/lib/jimp.js";
 import * as tf from '@tensorflow/tfjs';
 // import * as tf from './custom_tfjs/custom_tfjs.js';
 
-async function processFace() {
+async function processFace(imageData) {
 
     tf.setBackend("cpu")
 
     // Load original image from which to generate face texture.
-    var image = await Jimp.read('./assets/test_img_1.jpg')
+    // var image = await Jimp.read('./assets/test_img_1.jpg')
+
+    imageData = imageData.split(',')[1]; 
+    let image = await Jimp.read(Buffer.from(imageData, "base64"));
+
 
     // Process the image into a 96 x 96, 3 channel greyscale input tensor for the model
     image.resize(96, 96);
@@ -24,7 +28,7 @@ async function processFace() {
 
     // Get predicted facial landmark positions
     const model = await tf.loadLayersModel('model_dir/model.json');
-    let output = model.predict(input).dataSync()
+    let output = model.predict(input).dataSync();
 
     // let output = [62.3718376159668, 41.93854904174805, 32.98002624511719, 41.13397216796875, 49.15152359008789, 62.13052749633789, 48.9090461730957, 73.91754150390625];
 
@@ -39,7 +43,8 @@ async function processFace() {
     let eyelevel = (left_eye_y + right_eye_y) / 2;
 
     // Re-read the face image to generate the final texture
-    var image = await Jimp.read('./assets/test_img_1.jpg');
+    // var image = await Jimp.read('./assets/test_img_1.jpg');
+    image = await Jimp.read(Buffer.from(imageData, "base64"));
     image.resize(1000, 1000);
     image = cv.matFromImageData(image.bitmap);
 
@@ -71,8 +76,10 @@ async function processFace() {
         console.log(data);
     });
 
+    
     model.dispose();
+    
+    return image.getBase64Async(Jimp.AUTO);
 }
 
-// run();
 export { processFace };

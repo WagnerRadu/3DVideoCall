@@ -2,10 +2,11 @@ import { Scene } from "./scene.js";
 import { io } from "socket.io-client";
 import SimplePeer from "simple-peer";
 
-import { processFace } from "./face-processor.js";
+// import { processFace } from "./face-processor.js";
 import global from 'global'
 import * as process from "process";
 // import * as tf from '@tensorflow/tfjs';
+import { imgURI } from "./constants.js";
 
 global.process = process;
 
@@ -22,19 +23,18 @@ let constraints = {
     video: false
 }
 
+let faceTextureDataUri = null;
+
 window.onload = run();
 
 async function run() {
-    // await processFace();
-
-    // const profileInfo = await tf.profile(async () => {
-    //     // You must profile all uses of tf symbols.
-    //     await processFace();
-    //   });
-      
-    //   const kernelNames = profileInfo.kernelNames
-    //   console.log(kernelNames);
-
+    faceTextureDataUri = localStorage.getItem("faceTexture");
+    if (faceTextureDataUri) {
+        console.log(faceTextureDataUri);
+    } else {
+        console.log("Could not receive the face texture. Please try again!");
+    }
+    
     clientStream = await navigator.mediaDevices.getUserMedia(constraints);
     init();
     scene = new Scene();
@@ -47,7 +47,7 @@ function init() {
     });
 
     socket.on("introduction", (userIdsList) => {
-        scene.addUser(socket.id);
+        scene.addUser(socket.id, faceTextureDataUri);
         userIdsList.forEach(theirSocketId => {
             if (theirSocketId != socket.id) {
                 console.log("Adding user with id:", theirSocketId);
@@ -85,10 +85,9 @@ function init() {
             console.log("A new user connected with id:", theirSocketId);
             usersMap[theirSocketId] = {};
             createAudioElement(theirSocketId);
-            scene.addUser(theirSocketId);
+            // scene.addUser(theirSocketId);
         }
     });
-
 
     socket.on("userDisconnected", (disconnectedSocketId) => {
         console.log("User with ID:", disconnectedSocketId, "has disconnected");
@@ -111,12 +110,27 @@ function createPeerConnection(theirSocketId, isInitiator = false) {
 
     peerConnection.on("connect", () => {
         console.log("Ready to send our stream!");
-        peerConnection.send("Hi, I am peer number " + socket.id + "!!!!!");
+
+        let data = {
+            message: "Hi, I am peer number " + socket.id + "!!!!!",
+            faceTexture: faceTextureDataUri,
+            socketId: socket.id
+        };
+
+        peerConnection.send(JSON.stringify(data));
         peerConnection.addStream(clientStream);
-    })
+    });
 
     peerConnection.on("data", data => {
-        console.log(data.toString());
+        data = JSON.parse(data);
+        let message = data.message;
+        console.log(message);
+
+        let faceTexture = data.faceTexture;
+        let theirSocketId = data.socketId;
+
+        usersMap[theirSocketId].faceTexture = faceTexture;
+        scene.addUser(theirSocketId, faceTexture); 
     });
 
     peerConnection.on("stream", stream => {
