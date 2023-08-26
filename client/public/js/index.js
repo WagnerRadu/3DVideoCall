@@ -1,65 +1,104 @@
 import { Scene } from "./scene.js";
 import { io } from "socket.io-client";
 import SimplePeer from "simple-peer";
+import { arrayBufferToString, concatUint8Arrays, stringToArrayBuffer } from "./utils.js";
+import localforage, * as localForage from "localforage";
 
-import global from 'global'
-import * as process from "process";
+let socket;
 
-global.process = process;
-
-const socket = io("http://localhost:8080");
+let scene;
 
 let usersMap = {};
 
-socket.on("connect", () => {
-    console.log("My socket id:", socket.id);
-});
+let clientStream;
 
-socket.on("introduction", (userIdsList) => {
-    userIdsList.forEach(otherId => {
-        if (otherId != socket.id) {
-            console.log("Adding user with id:", otherId);
-            usersMap[otherId] = {};
+let constraints = {
+    audio: true,
+    video: false
+}
 
-            let pc = createPeerConnection(otherId, true);
-            usersMap[otherId].peerConnection = pc;
+let faceTextureDataUri = null;
+
+window.onload = run();
+
+async function run() {
+    faceTextureDataUri =  await localforage.getItem("faceTexture");
+    localforage.removeItem("faceTexture").then(console.log("Cleared face texture from local storage"));
+
+    if (faceTextureDataUri) {
+        console.log(faceTextureDataUri);
+    } else {
+        console.log("Could not receive the face texture. Please try again!");
+    }
+
+    clientStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    init();
+    scene = new Scene();
+}
+
+function init() {
+    socket = io("http://localhost:8080");
+    socket.on("connect", () => {
+        console.log("My socket id:", socket.id);
+    });
+
+    socket.on("introduction", (userIdsList) => {
+        scene.addUser(socket.id, faceTextureDataUri);
+        userIdsList.forEach(theirSocketId => {
+            if (theirSocketId != socket.id) {
+                console.log("Adding user with id:", theirSocketId);
+                usersMap[theirSocketId] = {};
+
+                let pc = createPeerConnection(theirSocketId, true);
+                usersMap[theirSocketId].peerConnection = pc;
+
+                createAudioElement(theirSocketId);
+            }
+        });
+    });
+
+    socket.on("signal", (to, from, data) => {
+        if (to != socket.id) {
+            console.log("Socket IDs do not match!");
+        }
+
+        let peer = usersMap[from];
+        if (peer.peerConnection) {
+            peer.peerConnection.signal(data);
+        } else {
+            console.log("Never found right simplepeer object");
+
+            let peerConnection = createPeerConnection(from, false);
+
+            usersMap[from].peerConnection = peerConnection;
+
+            peerConnection.signal(data);
         }
     });
-});
 
-socket.on("signal", (to, from, data) => {
-    if (to != socket.id) {
-        console.log("Socket IDs do not match!");
-    }
+    socket.on("newUserConnected", (theirSocketId) => {
+        if (theirSocketId != socket.id && !(theirSocketId in usersMap)) {
+            console.log("A new user connected with id:", theirSocketId);
+            usersMap[theirSocketId] = {};
+            createAudioElement(theirSocketId);
+        }
+    });
 
-    let peer = usersMap[from];
-    if (peer.peerConnection) {
-        peer.peerConnection.signal(data);
-    } else {
-        console.log("Never found right simplepeer object");
+    socket.on("userDisconnected", (disconnectedSocketId) => {
+        console.log("User with ID:", disconnectedSocketId, "has disconnected");
 
-        let peerConnection = createPeerConnection(from, false);
-
-        usersMap[from].peerConnection = peerConnection;
-
-        peerConnection.signal(data);
-    }
-});
-
-socket.on("newUserConnected", (theirSocketId) => {
-    if (theirSocketId != socket.id && !(theirSocketId in usersMap)) {
-        console.log("A new user connected with id:", theirSocketId);
-        usersMap[theirSocketId] = {};
-    }
-
-
-});
+        let audioEl = document.getElementById(disconnectedSocketId + "_audio");
+        audioEl.remove();
+        delete usersMap[disconnectedSocketId];
+    });
+}
 
 function createPeerConnection(theirSocketId, isInitiator = false) {
     console.log('Connecting to peer with ID', theirSocketId);
     console.log('initiating?', isInitiator);
 
-    let peerConnection = new SimplePeer({ initiator: isInitiator })
+    let peerConnection = new SimplePeer({ initiator: isInitiator, trickle: true })
 
     peerConnection.on("signal", (data) => {
         socket.emit("signal", theirSocketId, socket.id, data);
@@ -67,16 +106,90 @@ function createPeerConnection(theirSocketId, isInitiator = false) {
 
     peerConnection.on("connect", () => {
         console.log("Ready to send our stream!");
-        peerConnection.send("Hi, I am peer number " + socket.id + "!!!!!");
-    })
 
-    peerConnection.on("data", data => {
-        console.log(data.toString());
+        let data = {
+            // message: "Hi, I am peer number " + socket.id + "!!!!!",
+            faceTexture: faceTextureDataUri,
+            socketId: socket.id
+        };
+        let json = JSON.stringify(data);
+        let enc = new TextEncoder();
+        let arrayBuf = enc.encode(json);
+
+        const chunkSize = 16 * 1024;
+
+        while (arrayBuf.byteLength) {
+            const chunk = arrayBuf.slice(0, chunkSize);
+            arrayBuf = arrayBuf.slice(chunkSize, arrayBuf.byteLength);
+
+            peerConnection.send(chunk);
+        }
+
+        peerConnection.send("Done!");
+        peerConnection.addStream(clientStream);
     });
 
+    const fileChunks = [];
+    peerConnection.on("data", data => {
+        if (data.toString() === 'Done!') {
+            let mergedArray = concatUint8Arrays(fileChunks);
+
+            // let json = arrayBufferToString(mergedArray);
+            let json = new TextDecoder().decode(mergedArray);
+
+            data = JSON.parse(json);
+            // console.log(data.message);
+
+            let faceTexture = data.faceTexture;
+            let theirSocketId = data.socketId;
+
+            console.log("Received data from user with id", theirSocketId);
+
+            usersMap[theirSocketId].faceTexture = faceTexture;
+            scene.addUser(theirSocketId, faceTexture);
+        }
+        else {
+            fileChunks.push(data);
+        }
+    });
+
+    peerConnection.on("stream", stream => {
+        console.log("Incoming stream");
+
+        let audioStream = new MediaStream([stream.getAudioTracks()[0]]);
+
+        let audioEl = document.getElementById(theirSocketId + "_audio");
+        audioEl.srcObject = audioStream;
+    })
     return peerConnection;
 }
 
-const scene = new Scene();
+const createAudioElement = (id) => {
+    let audioEl = document.createElement("audio");
+    audioEl.setAttribute("id", id + "_audio");
+    audioEl.controls = true;
+    audioEl.volume = 1;
+    let audioContainer = document.getElementById("audio-container")
+    audioContainer.appendChild(audioEl);
+
+    audioEl.addEventListener("loadeddata", () => {
+        audioEl.play();
+    });
+}
+
+const toggleMic = async () => {
+    let audioTrack = clientStream.getTracks().find(track => track.kind === "audio");
+
+    if (audioTrack.enabled) {
+        audioTrack.enabled = false;
+        console.log("Microphone muted");
+        document.getElementById("mic-btn").style.backgroundColor = "rgb(150,150,150)";
+    } else {
+        audioTrack.enabled = true;
+        console.log("Microphone unmuted");
+        document.getElementById("mic-btn").style.backgroundColor = "rgb(179, 102, 249, 0.9)";
+    }
+}
 
 
+document.getElementById("mic-btn").addEventListener("click", toggleMic);
