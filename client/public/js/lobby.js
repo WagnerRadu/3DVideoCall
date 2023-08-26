@@ -1,4 +1,5 @@
 import { processFace } from "./face-processor.js";
+import localforage, * as localForage from "localforage";
 
 const mediaConstraints = { video: true, audio: false };
 const width = 320;
@@ -49,8 +50,14 @@ video.addEventListener(
 joinBtn.addEventListener("click", () => {
   if (textureDataUri != null) {
     console.log("Joining call");
-    localStorage.setItem("faceTexture", textureDataUri);
-    window.location = `index.html`;
+    // localStorage.setItem("faceTexture", textureDataUri);
+
+    localforage.setItem("faceTexture", textureDataUri).then(() => { window.location = `index.html` });
+
+    // sessionStorage.setItem("faceTexture", textureDataUri);
+
+    // window.location.href = `http://localhost:8080/index.html?faceTexture=${textureDataUri}`;
+    // window.location = `index.html`;
   }
 });
 

@@ -1,14 +1,8 @@
 import { Scene } from "./scene.js";
 import { io } from "socket.io-client";
 import SimplePeer from "simple-peer";
-
-// import { processFace } from "./face-processor.js";
-import global from 'global'
-import * as process from "process";
-// import * as tf from '@tensorflow/tfjs';
-import { imgURI } from "./constants.js";
-
-global.process = process;
+import { arrayBufferToString, concatUint8Arrays, stringToArrayBuffer } from "./utils.js";
+import localforage, * as localForage from "localforage";
 
 let socket;
 
@@ -28,14 +22,17 @@ let faceTextureDataUri = null;
 window.onload = run();
 
 async function run() {
-    faceTextureDataUri = localStorage.getItem("faceTexture");
+    faceTextureDataUri =  await localforage.getItem("faceTexture");
+    localforage.removeItem("faceTexture").then(console.log("Cleared face texture from local storage"));
+
     if (faceTextureDataUri) {
         console.log(faceTextureDataUri);
     } else {
         console.log("Could not receive the face texture. Please try again!");
     }
-    
+
     clientStream = await navigator.mediaDevices.getUserMedia(constraints);
+
     init();
     scene = new Scene();
 }
@@ -85,7 +82,6 @@ function init() {
             console.log("A new user connected with id:", theirSocketId);
             usersMap[theirSocketId] = {};
             createAudioElement(theirSocketId);
-            // scene.addUser(theirSocketId);
         }
     });
 
@@ -112,25 +108,49 @@ function createPeerConnection(theirSocketId, isInitiator = false) {
         console.log("Ready to send our stream!");
 
         let data = {
-            message: "Hi, I am peer number " + socket.id + "!!!!!",
+            // message: "Hi, I am peer number " + socket.id + "!!!!!",
             faceTexture: faceTextureDataUri,
             socketId: socket.id
         };
+        let json = JSON.stringify(data);
+        let enc = new TextEncoder();
+        let arrayBuf = enc.encode(json);
 
-        peerConnection.send(JSON.stringify(data));
+        const chunkSize = 16 * 1024;
+
+        while (arrayBuf.byteLength) {
+            const chunk = arrayBuf.slice(0, chunkSize);
+            arrayBuf = arrayBuf.slice(chunkSize, arrayBuf.byteLength);
+
+            peerConnection.send(chunk);
+        }
+
+        peerConnection.send("Done!");
         peerConnection.addStream(clientStream);
     });
 
+    const fileChunks = [];
     peerConnection.on("data", data => {
-        data = JSON.parse(data);
-        let message = data.message;
-        console.log(message);
+        if (data.toString() === 'Done!') {
+            let mergedArray = concatUint8Arrays(fileChunks);
 
-        let faceTexture = data.faceTexture;
-        let theirSocketId = data.socketId;
+            // let json = arrayBufferToString(mergedArray);
+            let json = new TextDecoder().decode(mergedArray);
 
-        usersMap[theirSocketId].faceTexture = faceTexture;
-        scene.addUser(theirSocketId, faceTexture); 
+            data = JSON.parse(json);
+            // console.log(data.message);
+
+            let faceTexture = data.faceTexture;
+            let theirSocketId = data.socketId;
+
+            console.log("Received data from user with id", theirSocketId);
+
+            usersMap[theirSocketId].faceTexture = faceTexture;
+            scene.addUser(theirSocketId, faceTexture);
+        }
+        else {
+            fileChunks.push(data);
+        }
     });
 
     peerConnection.on("stream", stream => {
@@ -160,7 +180,7 @@ const createAudioElement = (id) => {
 const toggleMic = async () => {
     let audioTrack = clientStream.getTracks().find(track => track.kind === "audio");
 
-    if(audioTrack.enabled) {
+    if (audioTrack.enabled) {
         audioTrack.enabled = false;
         console.log("Microphone muted");
         document.getElementById("mic-btn").style.backgroundColor = "rgb(150,150,150)";

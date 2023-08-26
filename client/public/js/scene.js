@@ -19,9 +19,7 @@ class Scene {
         this.renderer = new THREE.WebGLRenderer({
             // canvas: document.getElementById("background"),
             antialias: true
-        })
-
-
+        });
 
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(this.width, this.height);
@@ -72,11 +70,12 @@ class Scene {
                 if (child.material && child.material.name === "Skin") {
 
                     // child.material = new THREE.MeshBasicMaterial( { wireframe: true } );
+                    if (faceTexture) {
+                        const texture = new THREE.TextureLoader().load(faceTexture);
 
-                    const texture = new THREE.TextureLoader().load(faceTexture);
-
-                    texture.flipY = false;
-                    child.material.map = texture;
+                        texture.flipY = false;
+                        child.material.map = texture;
+                    }
                     // child.material.shading = THREE.SmoothShading;
                 }
             });

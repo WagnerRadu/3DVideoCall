@@ -9,7 +9,7 @@ async function processFace(imageData) {
     tf.setBackend("cpu")
 
     // Load original image from which to generate face texture.
-    // var image = await Jimp.read('./assets/test_img_1.jpg')
+    // let image = await Jimp.read('./assets/test_img_1.jpg')
 
     imageData = imageData.split(',')[1]; 
     let image = await Jimp.read(Buffer.from(imageData, "base64"));
@@ -19,7 +19,7 @@ async function processFace(imageData) {
     image.resize(96, 96);
     image.grayscale();
     const outShape = [1, image.bitmap.width, image.bitmap.height, 4];
-    var input = tf.tensor4d(image.bitmap.data, outShape, 'float32');
+    let input = tf.tensor4d(image.bitmap.data, outShape, 'float32');
     input = input.slice([0, 0, 0, 0], [1, image.bitmap.width, image.bitmap.height, 3]);
 
     // image.getBase64(Jimp.AUTO, function(err, data) {
@@ -43,7 +43,7 @@ async function processFace(imageData) {
     let eyelevel = (left_eye_y + right_eye_y) / 2;
 
     // Re-read the face image to generate the final texture
-    // var image = await Jimp.read('./assets/test_img_1.jpg');
+    // let image = await Jimp.read('./assets/test_img_1.jpg');
     image = await Jimp.read(Buffer.from(imageData, "base64"));
     image.resize(1000, 1000);
     image = cv.matFromImageData(image.bitmap);
