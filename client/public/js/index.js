@@ -29,6 +29,7 @@ async function run() {
         console.log(faceTextureDataUri);
     } else {
         console.log("Could not receive the face texture. Please try again!");
+        window.location = `lobby.html`;
     }
 
     clientStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -90,6 +91,7 @@ function init() {
 
         let audioEl = document.getElementById(disconnectedSocketId + "_audio");
         audioEl.remove();
+        scene.removeUser(disconnectedSocketId);
         delete usersMap[disconnectedSocketId];
     });
 }
@@ -169,6 +171,8 @@ const createAudioElement = (id) => {
     audioEl.setAttribute("id", id + "_audio");
     audioEl.controls = true;
     audioEl.volume = 1;
+    audioEl.style.display = "none";
+
     let audioContainer = document.getElementById("audio-container")
     audioContainer.appendChild(audioEl);
 
@@ -193,3 +197,11 @@ const toggleMic = async () => {
 
 
 document.getElementById("mic-btn").addEventListener("click", toggleMic);
+
+document.getElementById("leave-btn").addEventListener("click", () => {
+    window.location = `lobby.html`;
+});
+
+document.getElementById("reset-btn").addEventListener("click", () => {
+    scene.resetCamera();
+});

@@ -11,7 +11,7 @@ html, body {
 
 .controls-container {
     position: fixed;
-    /* bottom: 20px; */
+    bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
@@ -19,7 +19,8 @@ html, body {
 }
 
 .control-icon {
-    background-color: rgb(179, 102, 249, 0.9);
+    background-color: rgb(179, 102, 249);
+    /* background-color: #1f1f1f8e; */
     padding:20px;
     border-radius: 50%;
     display: flex;
@@ -29,14 +30,23 @@ html, body {
     width: 40px;
 }
 
-.control-icon img{
-    /* display: block; */
-    height: 30px;
-    width: 30px;
+.control-icon:hover {
+    background-color: rgb(156, 59, 247);
 }
 
-#leave-btn{
-    background-color: rgb(255, 80, 80, 1);
+.control-icon img {
+    /* display: block; */
+    height: 45px;
+    width: 45px;
+    background-color: transparent;
+}
+
+#leave-btn {
+    background-color: rgb(255, 95, 95);
+}
+
+#leave-btn:hover {
+    background-color: rgb(255, 51, 51);
 }
 
 /* .canvas-container {
