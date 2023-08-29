@@ -10,7 +10,6 @@ class Scene {
         this.users3DObjects = {};
 
         this.width = parent.innerWidth;
-        // this.height = parent.innerHeight * 0.8;
         this.height = parent.innerHeight;
 
         this.nextUserPos = -20;
@@ -47,14 +46,14 @@ class Scene {
         let canvasContainer = document.getElementById("canvas-container");
         canvasContainer.append(this.renderer.domElement);
 
-        this.ambientLight = new THREE.AmbientLight(0x404040, 50);
-        this.scene.add(this.ambientLight);
+        this.mainLight = new THREE.DirectionalLight(0xffffff, 5);
+        this.mainLight.position.set(10, 10, 10);
 
-        // this.scene.add(new THREE.AxesHelper(100));
+        this.hemisphereLight = new THREE.HemisphereLight(0xddeeff, 0x202020, 5);
+        this.scene.add(this.mainLight, this.hemisphereLight);
 
         window.addEventListener("resize", () => {
             this.width = window.innerWidth;
-            // this.height = Math.floor(window.innerHeight * 0.8);
             this.height = window.innerHeight;
             this.camera.aspect = this.width / this.height;
             this.renderer.setSize(this.width, this.height);
@@ -64,43 +63,45 @@ class Scene {
 
     animate = () => {
         requestAnimationFrame(this.animate);
-        
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
     }
 
     addUser = (id, faceTexture) => {
-        let human3DObject = null;
+        this.users3DObjects[id] = {};
         this.gltfLoader.load("../assets/human_bust.gltf", (gltfScene) => {
+            const model = gltfScene.scene.children[0];
+            const mixer = new THREE.AnimationMixer(model);
+            this.users3DObjects[id].mixer = mixer;
+            const animation = gltfScene.animations[0];
+            const action = mixer.clipAction(animation);
+            action.setDuration(1);
+            action.play();
             console.log(gltfScene);
-            // console.log(gltfScene.materials.getMaterialByName);
 
             gltfScene.scene.traverse(function (child) {
 
                 if (child.material && child.material.name === "Skin") {
-
-                    // child.material = new THREE.MeshBasicMaterial( { wireframe: true } );
                     if (faceTexture) {
                         const texture = new THREE.TextureLoader().load(faceTexture);
 
                         texture.flipY = false;
                         child.material.map = texture;
                     }
-                    // child.material.shading = THREE.SmoothShading;
+                }
+                if (child.material && child.material.name === "Mouth") {
+                    child.material.color.set(0xfc0303);
                 }
                 if (child.isMesh) {
                     child.receiveShadow = true;
                     child.castShadow = true;
                 }
-                if (child.type === "Group") {
-                    human3DObject = child;
-                }
             });
 
-            this.users3DObjects[id] = human3DObject;
+            this.users3DObjects[id].object = model;
             console.log(id);
-            console.log(this.users3DObjects[id]);
-            this.scene.add(this.users3DObjects[id]);
+            console.log(this.users3DObjects[id].object);
+            this.scene.add(this.users3DObjects[id].object);
             this.updatePositions();
 
             console.log("Updated positions:\n User", id, "has the following positions:", this.users3DObjects[id].position);
@@ -109,8 +110,8 @@ class Scene {
 
     removeUser = (id) => {
         console.log("Removing 3D avatar for user", id);
-        console.log(this.users3DObjects[id]);
-        this.scene.remove(this.users3DObjects[id]);
+        console.log(this.users3DObjects[id].object);
+        this.scene.remove(this.users3DObjects[id].object);
         delete this.users3DObjects[id];
         this.updatePositions();
     };
@@ -119,7 +120,6 @@ class Scene {
         let radius = 30;
         let numberOfUsers = Object.keys(this.users3DObjects).length;
 
-        // this.clearScene();
         this.scene.add(new THREE.AxesHelper(100));
 
         let i = 1;
@@ -130,12 +130,11 @@ class Scene {
             let z = (radius) * Math.sin(angle);
 
             console.log((key));
-            console.log(this.users3DObjects[key]);
-            let human3DObject = this.users3DObjects[key];
+            console.log(this.users3DObjects[key].object);
+            let human3DObject = this.users3DObjects[key].object;
             human3DObject.position.x = x;
             human3DObject.position.z = z;
             human3DObject.lookAt(0, 0, 0);
-            // this.scene.add(human3DObject);
 
             i++;
         }
@@ -152,6 +151,15 @@ class Scene {
         this.camera.position.set(0, 0, 50);
         this.camera.lookAt(0, 0, 0)
     }
+
+    moveMouth(id, value) {
+        value = 1 / (1 + Math.E ** (6 - value / 200));
+
+        if (this.users3DObjects[id].mixer) {
+            this.users3DObjects[id].mixer.setTime(value);
+        }
+    }
+
 }
 
 
