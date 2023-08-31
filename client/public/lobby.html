@@ -9,18 +9,42 @@
 </head>
 
 <body>
-    <div class="webcam-container">
-        <video autoplay="true" id="video" style="display: none"></video></video>
-        <canvas id="videoCanvas"></canvas>
-        <button id="capture-btn">Take photo</button>
+    <video autoplay="true" id="video" width="320" height="240" style="display: none"></video></video>
+    <!-- <div class="webcam-container">
+        <canvas id="video-canvas" class="video-canvas"></canvas>
+        <button id="capture-btn" class="capture-btn">Take photo</button>
     </div>
-    <canvas id="result-canvas"></canvas>
-    <button type="button" id="generate-btn">Generate Texture</button>
-    <canvas id="texture-canvas"></canvas>
-    <button type="button" id="join-btn">Join Call</button>
+    <div class="display-container">
+        <div>
+            <canvas id="result-canvas" class="result-canvas"></canvas>
+            <button type="button" id="generate-btn">Generate Texture</button>
+        </div>
+        <div>
+            <canvas id="texture-canvas" class="result-canvas"></canvas>
+            <button type="button" id="join-btn">Join Call</button>
+        </div>
+    </div> -->
+
+    <div class="container">
+        <div class="canvas-container">
+            <canvas id="video-canvas" class="video-canvas"></canvas>
+            <button id="capture-btn" class="capture-btn">Take photo</button>
+        </div>
+        <div class="canvas-container">
+            <canvas id="result-canvas" class="result-canvas"></canvas>
+            <button type="button" id="generate-btn">Generate Texture</button>
+        </div>
+        <div class="canvas-container">
+            <canvas id="texture-canvas" class="result-canvas"></canvas>
+            <button type="button" id="join-btn">Join Call</button>
+        </div>
+    </div>
+
 </body>
 
 <script src="./js/opencv.js"></script>
 <script type="module" src="./js/lobby.js"></script>
 
 </html>
+
+<!-- HTML !-->

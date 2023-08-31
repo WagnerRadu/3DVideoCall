@@ -4,6 +4,7 @@ import SimplePeer from "simple-peer";
 import { arrayBufferToString, concatUint8Arrays, stringToArrayBuffer } from "./utils.js";
 import localforage, * as localForage from "localforage";
 
+
 let socket;
 
 let scene;
@@ -19,6 +20,8 @@ let constraints = {
 
 let faceTextureDataUri = null;
 
+const audioCtx = new AudioContext();
+
 window.onload = run();
 
 async function run() {
@@ -29,6 +32,7 @@ async function run() {
         console.log(faceTextureDataUri);
     } else {
         console.log("Could not receive the face texture. Please try again!");
+        window.location = `lobby.html`;
     }
 
     clientStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -90,6 +94,9 @@ function init() {
 
         let audioEl = document.getElementById(disconnectedSocketId + "_audio");
         audioEl.remove();
+        scene.removeUser(disconnectedSocketId);
+        usersMap[disconnectedSocketId].peerConnection.destroy();
+        clearInterval(usersMap[disconnectedSocketId].animationIntervalId);
         delete usersMap[disconnectedSocketId];
     });
 }
@@ -108,9 +115,7 @@ function createPeerConnection(theirSocketId, isInitiator = false) {
         console.log("Ready to send our stream!");
 
         let data = {
-            // message: "Hi, I am peer number " + socket.id + "!!!!!",
             faceTexture: faceTextureDataUri,
-            socketId: socket.id
         };
         let json = JSON.stringify(data);
         let enc = new TextEncoder();
@@ -141,8 +146,6 @@ function createPeerConnection(theirSocketId, isInitiator = false) {
             // console.log(data.message);
 
             let faceTexture = data.faceTexture;
-            let theirSocketId = data.socketId;
-
             console.log("Received data from user with id", theirSocketId);
 
             usersMap[theirSocketId].faceTexture = faceTexture;
@@ -153,14 +156,44 @@ function createPeerConnection(theirSocketId, isInitiator = false) {
         }
     });
 
+    
     peerConnection.on("stream", stream => {
         console.log("Incoming stream");
 
         let audioStream = new MediaStream([stream.getAudioTracks()[0]]);
+        console.log("Audio stream received:", audioStream);
 
         let audioEl = document.getElementById(theirSocketId + "_audio");
         audioEl.srcObject = audioStream;
+
+        const audioStreamSourceNode = audioCtx.createMediaStreamSource(audioStream.clone());
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0;
+        analyser.minDecibels = -90;
+        analyser.maxDecibels = -10;
+        audioStreamSourceNode.connect(analyser);
+
+        usersMap[theirSocketId].animationIntervalId = setInterval(() => {
+
+            let bufferLengthAlt = analyser.frequencyBinCount;
+            let dataArrayAlt = new Uint8Array(bufferLengthAlt)
+            
+            let sumAmplitude = 0;
+            analyser.getByteFrequencyData(dataArrayAlt);
+            for (const amplitude of dataArrayAlt) {
+                sumAmplitude += amplitude;
+            }
+            // console.log(theirSocketId, ":", sumAmplitude);
+            scene.moveMouth(theirSocketId, sumAmplitude);
+        }, 50)
+        console.log("Started interval with id:",  usersMap[theirSocketId].animationIntervalId);
     })
+
+    peerConnection.on("close", () => {
+        console.log("Peer connection close by user", theirSocketId);
+    })
+
     return peerConnection;
 }
 
@@ -169,6 +202,8 @@ const createAudioElement = (id) => {
     audioEl.setAttribute("id", id + "_audio");
     audioEl.controls = true;
     audioEl.volume = 1;
+    audioEl.style.display = "none";
+
     let audioContainer = document.getElementById("audio-container")
     audioContainer.appendChild(audioEl);
 
@@ -178,7 +213,7 @@ const createAudioElement = (id) => {
 }
 
 const toggleMic = async () => {
-    let audioTrack = clientStream.getTracks().find(track => track.kind === "audio");
+    let audioTrack = clientStream.getAudioTracks()[0];
 
     if (audioTrack.enabled) {
         audioTrack.enabled = false;
@@ -193,3 +228,11 @@ const toggleMic = async () => {
 
 
 document.getElementById("mic-btn").addEventListener("click", toggleMic);
+
+document.getElementById("leave-btn").addEventListener("click", () => {
+    window.location = `lobby.html`;
+});
+
+document.getElementById("reset-btn").addEventListener("click", () => {
+    scene.changePerspective();
+});
