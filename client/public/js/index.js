@@ -32,7 +32,7 @@ async function run() {
         console.log(faceTextureDataUri);
     } else {
         console.log("Could not receive the face texture. Please try again!");
-        window.location = `lobby.html`;
+        // window.location = `lobby.html`;
     }
 
     clientStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -184,7 +184,7 @@ function createPeerConnection(theirSocketId, isInitiator = false) {
             for (const amplitude of dataArrayAlt) {
                 sumAmplitude += amplitude;
             }
-            console.log(theirSocketId, ":", sumAmplitude);
+            // console.log(theirSocketId, ":", sumAmplitude);
             scene.moveMouth(theirSocketId, sumAmplitude);
         }, 50)
         console.log("Started interval with id:",  usersMap[theirSocketId].animationIntervalId);
@@ -234,5 +234,5 @@ document.getElementById("leave-btn").addEventListener("click", () => {
 });
 
 document.getElementById("reset-btn").addEventListener("click", () => {
-    scene.resetCamera();
+    scene.changePerspective();
 });
