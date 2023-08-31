@@ -32,7 +32,7 @@ async function run() {
         console.log(faceTextureDataUri);
     } else {
         console.log("Could not receive the face texture. Please try again!");
-        // window.location = `lobby.html`;
+        window.location = `lobby.html`;
     }
 
     clientStream = await navigator.mediaDevices.getUserMedia(constraints);
